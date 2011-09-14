@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark"
+               creationComplete="loadPhotos();">
+
+    <s:Group id="_panel" left="0" right="0" top="0" bottom="0">
+        <s:layout>
+            <s:BasicLayout/>
+        </s:layout>
+    </s:Group>
+
+    <s:Group horizontalCenter="0" bottom="0" mouseChildren="false" mouseEnabled="false">
+        <s:Rect left="0" right="0" top="0" bottom="0" radiusX="5" radiusY="5">
+            <s:fill>
+                <s:SolidColor color="black" alpha="0.5"/>
+            </s:fill>
+        </s:Rect>
+        <s:Label left="0" right="0" top="0" bottom="0" color="0xe7cb34" id="_label" fontSize="50"
+                 fontFamily="Times"
+                 mouseEnabled="false" mouseChildren="false" textAlign="center" paddingLeft="10" paddingRight="20"
+                 paddingTop="10" paddingBottom="10">
+            <s:filters>
+                <s:DropShadowFilter distance="5" angle="45" color="0xae1b27"/>
+            </s:filters>
+        </s:Label>
+    </s:Group>
+
+    <fx:Style>
+        @font-face {
+            src: url("/campaign.ttf");
+            fontFamily: "MyCampaign";
+            advancedAntiAliasing: true;
+        }
+    </fx:Style>
+
+    <fx:Script><![CDATA[
+        import deng.fzip.FZipFile;
+
+        import spark.components.Image;
+
+        private var _photos: Vector.<FZipFile>;
+        private var _images: Vector.<Image> = new Vector.<Image>();
+        private var _currentImage: Image;
+
+        private var _timer: Timer;
+        private var _delay: Number = 1000; // ms
+        private var _slideShowSound: SoundChannel;
+
+        private var _soundPausePosition: Number = 2000;
+
+        private var _index: int = 0;
+
+        private function loadPhotos(): void {
+            Photos.loadPhotos(photosLoaded);
+        }
+
+        private function photosLoaded(photos: Vector.<FZipFile>): void {
+            _photos = new Vector.<FZipFile>();
+
+            while (photos.length > 0) {
+                var index: int = Math.random() * photos.length;
+                var p: FZipFile = photos[index];
+                _photos.push(p);
+                photos.splice(index, 1);
+            }
+            for (var i: int = 0; i < _photos.length; i++) {
+                trace(_photos[i].filename);
+                addImage(_photos[i], i);
+            }
+            addEventListener(MouseEvent.CLICK, function(e: MouseEvent): void {
+                if (_currentImage == null) return;
+                if (_timer.running) {
+                    _timer.stop();
+                    setStyle("backgroundColor", "red");
+                    _soundPausePosition = _slideShowSound.position;
+                    _slideShowSound.stop();
+                    (new Photos.fanfareSound as Sound).play();
+                } else {
+                    start();
+                }
+            });
+            startLoop();
+        }
+
+        private function startLoop(): void {
+            _timer = new Timer(_delay, 1);
+            _timer.addEventListener(TimerEvent.TIMER, showNextPhoto);
+            start();
+        }
+
+        private function showNextPhoto(event: TimerEvent): void {
+            if (_currentImage != null) {
+                _currentImage.visible = false;
+            }
+            _index++;
+            if (_index == _images.length) {
+                _index = 0;
+            }
+            _timer.stop();
+            _delay = _delay * 0.96;
+            _timer = new Timer(_delay, 1);
+            _timer.addEventListener(TimerEvent.TIMER, showNextPhoto);
+            _timer.start();
+
+            _currentImage = _images[_index];
+            _currentImage.visible = true;
+            var filename: String = _photos[_index].filename;
+            var dot: int = filename.lastIndexOf(".");
+            _label.text = filename.substr(0, dot);
+        }
+
+        private function addImage(photoFile: FZipFile, i: int): void {
+            var image: Image = new Image();
+            image.left = 0;
+            image.right = 0;
+            image.top = 0;
+            image.bottom = 0;
+            image.source = photoFile.content;
+            image.visible = false;
+            image.mouseEnabled = false;
+            image.mouseChildren = false;
+            _images.push(image);
+            _panel.addElement(image);
+        }
+
+        private function start(): void {
+            setStyle("backgroundColor", "black");
+
+            var s: Sound = new Photos.slideShowSound() as Sound;
+            _slideShowSound = s.play(_soundPausePosition, 999);
+            _timer.start();
+        }
+        ]]></fx:Script>
+</s:Application>
